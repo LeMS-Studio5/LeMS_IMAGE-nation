@@ -8,7 +8,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MultiFaceRec", "MultiFaceRe
 		{52D9CF0F-FA7A-47AC-9559-91E099297734} = {52D9CF0F-FA7A-47AC-9559-91E099297734}
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "libProChic", "..\..\..\Github\Project_I2padams\libProChic\libProChic.csproj", "{52D9CF0F-FA7A-47AC-9559-91E099297734}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "libProChic", "..\Project_I2padams\libProChic\libProChic.csproj", "{52D9CF0F-FA7A-47AC-9559-91E099297734}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
