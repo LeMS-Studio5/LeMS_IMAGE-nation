@@ -1,19 +1,21 @@
 using System;
 using System.Diagnostics;
 using Emgu.CV.Structure;
+using Emgu.CV;
+//using MultiFaceRec;
 
-namespace Emgu.CV
+namespace MultiFaceRec
 {
    /// <summary>
    /// An object recognizer using PCA (Principle Components Analysis)
    /// </summary>
    [Serializable]
-   public class EigenObjectRecognizer
+   public class NewEigenObjectRecognizer
    {
       private Image<Gray, Single>[] _eigenImages;
       private Image<Gray, Single> _avgImage;
       private Matrix<float>[] _eigenValues;
-      private string[] _labels;
+      private Profile[] _labels;
       private double _eigenDistanceThreshold;
 
       /// <summary>
@@ -29,7 +31,7 @@ namespace Emgu.CV
       /// <summary>
       /// Get or set the labels for the corresponding training image
       /// </summary>
-      public String[] Labels
+      public Profile[] Labels
       {
          get { return _labels; }
          set { _labels = value; }
@@ -66,7 +68,7 @@ namespace Emgu.CV
          set { _eigenValues = value; }
       }
 
-      private EigenObjectRecognizer()
+      private NewEigenObjectRecognizer()
       {
       }
 
@@ -76,16 +78,16 @@ namespace Emgu.CV
       /// </summary>
       /// <param name="images">The images used for training, each of them should be the same size. It's recommended the images are histogram normalized</param>
       /// <param name="termCrit">The criteria for recognizer training</param>
-      public EigenObjectRecognizer(Image<Gray, Byte>[] images, ref MCvTermCriteria termCrit)
+      public NewEigenObjectRecognizer(Image<Gray, Byte>[] images, ref MCvTermCriteria termCrit)
          : this(images, GenerateLabels(images.Length), ref termCrit)
       {
       }
 
-      private static String[] GenerateLabels(int size)
+      private static Profile[] GenerateLabels(int size)
       {
-         String[] labels = new string[size];
-         for (int i = 0; i < size; i++)
-            labels[i] = i.ToString();
+            Profile[] labels = new Profile[size];
+            for (int i = 0; i < size; i++)
+                labels[i] = new Profile();// i.ToString();
          return labels;
       }
 
@@ -95,7 +97,7 @@ namespace Emgu.CV
       /// <param name="images">The images used for training, each of them should be the same size. It's recommended the images are histogram normalized</param>
       /// <param name="labels">The labels corresponding to the images</param>
       /// <param name="termCrit">The criteria for recognizer training</param>
-      public EigenObjectRecognizer(Image<Gray, Byte>[] images, String[] labels, ref MCvTermCriteria termCrit)
+      public NewEigenObjectRecognizer(Image<Gray, Byte>[] images, Profile[] labels, ref MCvTermCriteria termCrit)
          : this(images, labels, 0, ref termCrit)
       {
       }
@@ -111,7 +113,7 @@ namespace Emgu.CV
       /// If the threshold is &lt; 0, the recognizer will always treated the examined image as one of the known object. 
       /// </param>
       /// <param name="termCrit">The criteria for recognizer training</param>
-      public EigenObjectRecognizer(Image<Gray, Byte>[] images, String[] labels, double eigenDistanceThreshold, ref MCvTermCriteria termCrit)
+      public NewEigenObjectRecognizer(Image<Gray, Byte>[] images, Profile[] labels, double eigenDistanceThreshold, ref MCvTermCriteria termCrit)
       {
          Debug.Assert(images.Length == labels.Length, "The number of images should equals the number of labels");
          Debug.Assert(eigenDistanceThreshold >= 0.0, "Eigen-distance threshold should always >= 0.0");
@@ -183,13 +185,22 @@ namespace Emgu.CV
       /// <returns>Eigen values of the decomposed image</returns>
       public static float[] EigenDecomposite(Image<Gray, Byte> src, Image<Gray, Single>[] eigenImages, Image<Gray, Single> avg)
       {
-         return CvInvoke.cvEigenDecomposite(
+            return CvInvoke.cvEigenDecomposite(src.Ptr, getIntPtr(eigenImages), avg.Ptr);
+         /*return CvInvoke.cvEigenDecomposite(
              src.Ptr,
              Array.ConvertAll<Image<Gray, Single>, IntPtr>(eigenImages, delegate(Image<Gray, Single> img) { return img.Ptr; }),
-             avg.Ptr);
+             avg.Ptr);*/
       }
       #endregion
-
+        public static IntPtr[] getIntPtr(Image<Gray, Single>[] img)
+        {
+            IntPtr[] res = new IntPtr[img.Length];
+            for (int i = 0; i < img.Length ; i++)
+            {
+                res[i] = new IntPtr(img[i].Ptr.ToInt64());
+            }
+            return res;
+        }
       /// <summary>
       /// Given the eigen value, reconstruct the projected image
       /// </summary>
@@ -228,7 +239,7 @@ namespace Emgu.CV
       /// <param name="index">The index of the most similar object</param>
       /// <param name="eigenDistance">The eigen distance of the most similar object</param>
       /// <param name="label">The label of the specific image</param>
-      public void FindMostSimilarObject(Image<Gray, Byte> image, out int index, out float eigenDistance, out String label)
+      public void FindMostSimilarObject(Image<Gray, Byte> image, out int index, out float eigenDistance, out Profile label)
       {
          float[] dist = GetEigenDistances(image);
 
@@ -257,10 +268,11 @@ namespace Emgu.CV
       {
          int index;
          float eigenDistance;
-         String label;
+         Profile label;
          FindMostSimilarObject(image, out index, out eigenDistance, out label);
 
-         return (_eigenDistanceThreshold <= 0 || eigenDistance < _eigenDistanceThreshold )  ? _labels[index] : String.Empty;
+         return (_eigenDistanceThreshold <= 0 || eigenDistance < _eigenDistanceThreshold ) 
+                ? _labels[index].FirstLastName() : string.Empty;
       }
    }
 }
