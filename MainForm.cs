@@ -29,45 +29,44 @@ namespace MultiFaceRec
         Image<Gray, byte> result, TrainedFace = null;
         Image<Gray, byte> gray = null;
         List<Image<Gray, byte>> trainingImages = new List<Image<Gray, byte>>();
-        List<string> labels= new List<string>();
+        List<Profile> labels= new List<Profile>();
         List<string> NamePersons = new List<string>();
-        int ContTrain, NumLabels, t;
-        string name, names = null;
-
-
+        int IMGSIZE = 75;//ContTrain, NumLabels, t;
+        string name, folderRoot=Environment.ExpandEnvironmentVariables("%appdata%")+ @"\LeMS\Imagenation\";
         public FrmPrincipal()
         {
             InitializeComponent();
             this.elvThumb.FileOpened += elvThumb_Open;
+            //PicasaDBConverter.CheckForPicasaDB();
+
             //Load haarcascades for face detection
             face = new HaarCascade("haarcascade_frontalface_default.xml");
             //eye = new HaarCascade("haarcascade_eye.xml");
             try
             {
-                //Load of previus trainned faces and labels for each image
-                string Labelsinfo = File.ReadAllText(Application.StartupPath + "/TrainedFaces/TrainedLabels.txt");
-                string[] Labels = Labelsinfo.Split('%');
-                NumLabels = Convert.ToInt16(Labels[0]);
-                ContTrain = NumLabels;
-                string LoadFaces;
-
-                for (int tf = 1; tf < NumLabels+1; tf++)
+                if (!Directory.Exists(folderRoot + "DB\\"))
+                    Directory.CreateDirectory(folderRoot + "DB\\");
+                foreach (String prof in Directory.GetDirectories(folderRoot + "DB"))
                 {
-                    LoadFaces = "face" + tf + ".jpg";
-                    trainingImages.Add(new Image<Gray, byte>(Application.StartupPath + "/TrainedFaces/" + LoadFaces));
-                    labels.Add(Labels[tf]);
+                    labels.Add(new Profile(prof + "\\details.pro"));
+                    trainingImages.Add(new Image<Gray, byte>(prof+"\\pro.jpg").Resize(IMGSIZE,IMGSIZE,INTER.CV_INTER_CUBIC));
                 }
             
             }
-            catch(Exception e)
+            catch
             {
                 //MessageBox.Show(e.ToString());
                 MessageBox.Show("Nothing in binary database, please add at least a face(Simply train the prototype with the Add Face Button).", "Triained faces load", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
             }
 
         }
-
-
+        private Image<Gray,byte> ResizeImage(Image<Gray,byte> input, int maxHeight, int maxWidth)
+        {
+            int ogWidth = input.Width, ogHeight = input.Height;
+            float ratioX = maxWidth / ogWidth, ratioY = maxHeight / ogHeight, ratio = Math.Min(ratioX, ratioY), sourceRatio = ogWidth / ogHeight;
+            int w = (int)(ogWidth * ratio), h = (int)(ogHeight * ratio);
+            return input.Resize(w, h,INTER.CV_INTER_CUBIC);
+        }
         private void btnDetect_Click(object sender, EventArgs e)
         {
             //Initialize the capture device
@@ -77,17 +76,12 @@ namespace MultiFaceRec
             //System.Threading.Thread t = new System.Threading.Thread(new System.Threading.ThreadStart(this.FrameGrabber));
             //t.Start();
             //Application.Idle += new EventHandler(FrameGrabber);
-            btnDetect.Enabled = false;
+            //btnDetect.Enabled = false;
         }
-
-
-        private void btnAddFace_Click(object sender, System.EventArgs e)
+       /* private void btnAddFace_Click(object sender, System.EventArgs e)
         {
             try
             {
-                //Trained face counter
-                ContTrain = ContTrain + 1;
-
                 //Get a gray frame from capture device
                 gray = grabber.QueryGrayFrame().Resize(320, 240, Emgu.CV.CvEnum.INTER.CV_INTER_CUBIC);
 
@@ -110,7 +104,7 @@ namespace MultiFaceRec
                 //test image with cubic interpolation type method
                 TrainedFace = result.Resize(100, 100, Emgu.CV.CvEnum.INTER.CV_INTER_CUBIC);
                 trainingImages.Add(TrainedFace);
-                labels.Add(txtName.Text);
+                //labels.Add(txtName.Text);
 
                 //Show face added in gray scale
                 imgTrain.Image = TrainedFace;
@@ -131,7 +125,7 @@ namespace MultiFaceRec
             {
                 MessageBox.Show("Enable the face detection first", "Training Fail", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
             }
-        }
+        }*/
         private void elvThumb_Open(String filePath)
         {
             Debug.WriteLine("Opening " + filePath);
@@ -139,11 +133,16 @@ namespace MultiFaceRec
             Debug.WriteLine("Opened " + filePath);
         }
 
+        private void explorerTreeView1_AfterSelect(object sender, TreeViewEventArgs e)
+        {
+            elvThumb.Directory= e.Node.Tag.ToString();
+        }
+
         void FrameGrabber(String fileName)
         {
                 //foreach (String fileName in System.IO.Directory.GetFiles(@"E:\Public\Pictures\YearBook\2019", "*.jpg")) {
                 Console.WriteLine("Inside");
-                lblNumber.Text = "0";
+                //lblNumber.Text = "0";
                 //label4.Text = "";
                 //NamePersons.Add("");
 
@@ -160,41 +159,46 @@ namespace MultiFaceRec
                   10,
                   Emgu.CV.CvEnum.HAAR_DETECTION_TYPE.DO_CANNY_PRUNING,
                   new Size(20, 20));
-
+            int fillerHeight = 15;
             //Action for each element detected
+            grpResults.Controls.Clear();
             foreach (MCvAvgComp f in facesDetected[0])
             {
-                t = t + 1;
-                result = currentFrame.Copy(f.rect).Convert<Gray, byte>().Resize(100, 100, Emgu.CV.CvEnum.INTER.CV_INTER_CUBIC);
+                result = currentFrame.Copy(f.rect).Convert<Gray, byte>().Resize(IMGSIZE,IMGSIZE, Emgu.CV.CvEnum.INTER.CV_INTER_CUBIC);
                 //draw the face detected in the 0th (gray) channel with blue color
+                System.Drawing.Image facePreview = currentFrame.Bitmap.Clone(new Rectangle(f.rect.X, f.rect.Y, f.rect.Width, f.rect.Height), System.Drawing.Imaging.PixelFormat.DontCare);
                 currentFrame.Draw(f.rect, new Bgr(Color.Red), 2);
 
 
                 if (trainingImages.ToArray().Length != 0)
                 {
                     //TermCriteria for face recognition with numbers of trained images like maxIteration
-                    MCvTermCriteria termCrit = new MCvTermCriteria(ContTrain, 0.001);
+                    MCvTermCriteria termCrit = new MCvTermCriteria(labels.Count+1, 0.001);
 
                     //Eigen face recognizer
-                    EigenObjectRecognizer recognizer = new EigenObjectRecognizer(
+                    NewEigenObjectRecognizer recognizer = new NewEigenObjectRecognizer(
                        trainingImages.ToArray(),
                        labels.ToArray(),
-                       3000,
+                       850,
                        ref termCrit);
 
                     name = recognizer.Recognize(result);
 
                     //Draw the label for each face detected and recognized
                     currentFrame.Draw(name, ref font, new Point(f.rect.X - 2, f.rect.Y - 2), new Bgr(Color.LightGreen));
-
                 }
+                    FaceFiller fil = new FaceFiller(facePreview, name);
+                fil.DetailUpdate += Fil_DetailUpdate;
+                fil.Location = new Point(fil.Location.X, fillerHeight);
+                fillerHeight += fil.Height + 5;
+                    grpResults.Controls.Add(fil);
 
                 //NamePersons[t - 1] = name;
                 //NamePersons.Add("");
 
 
                 //Set the number of faces detected on the scene
-                lblNumber.Text = facesDetected[0].Length.ToString();
+                //lblNumber.Text = facesDetected[0].Length.ToString();
 
                 /*
                 //Set the region of interest on the faces
@@ -217,7 +221,6 @@ namespace MultiFaceRec
 
 */
             }
-                    t = 0;
                     
                     //Names concatenation of persons recognized
                     for (int nnn = 0; nnn < facesDetected[0].Length-1; nnn++)
@@ -227,12 +230,16 @@ namespace MultiFaceRec
                     //Show the faces procesed and recognized
                     imageBoxFrameGrabber.Image = currentFrame;
                 imageBoxFrameGrabber.Invalidate();
-                    lblNobody.Text = names;
-                    names = "";
+                    //lblNobody.Text = names;
                     //Clear the list(vector) of names
                     NamePersons.Clear();
                 
             }
 
+        private void Fil_DetailUpdate(object sender, EventArgs e)
+        {
+            labels.Add(new Profile( sender.ToString()+ "\\details.pro"));
+            trainingImages.Add(new Image<Gray, byte>(  sender.ToString() + "\\pro.jpg").Resize(IMGSIZE,IMGSIZE,INTER.CV_INTER_CUBIC));
+        }
     }
 }
