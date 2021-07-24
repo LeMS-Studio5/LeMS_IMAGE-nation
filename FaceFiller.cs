@@ -37,7 +37,7 @@ namespace MultiFaceRec
             PersonDetails details = new PersonDetails(picPreview.Image);
             if (details.ShowDialog() == DialogResult.OK)
             {
-                txtName.Text = details.ProfileName();
+                txtName.Text = details.Profile.FirstLastName();
                 DetailUpdate?.Invoke(details.profileLocation(), e);
             }
         }

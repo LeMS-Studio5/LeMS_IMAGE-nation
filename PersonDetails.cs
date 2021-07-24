@@ -15,14 +15,22 @@ namespace MultiFaceRec
     {
         int profileIndex=0;
         String dbLoc = Environment.ExpandEnvironmentVariables("%appdata%") + @"\LeMS\Imagenation\DB\";
-        public PersonDetails(System.Drawing.Image profile)
+        public PersonDetails(System.Drawing.Image ProfileImage)
         {
             InitializeComponent();
-            picProfile.Image = profile;
+            picProfile.Image = ProfileImage;
+            if (Directory.GetDirectories(dbLoc).Length>0) profileIndex = int.Parse(new DirectoryInfo(Directory.GetDirectories(dbLoc).Last()).Name)+1;
+            Profile = new Profile(dbLoc + profileIndex.ToString("000000"));
         }
         public PersonDetails(int index)
         {
+            InitializeComponent();
             profileIndex = index;
+            Profile = new Profile(dbLoc + profileIndex.ToString("000000"));
+            txtFirst.Text = Profile.FirstName;
+            txtMiddle.Text = Profile.MiddleName;
+            txtLast.Text = Profile.LastName;
+            picProfile.Image = Profile.ProfilePicture;
         }
         private void btnCancel_Click(object sender, EventArgs e)
         {
@@ -34,15 +42,13 @@ namespace MultiFaceRec
         {
             if (Required(txtFirst))
             {
-                while (profileIndex == 0 || Directory.Exists(dbLoc + profileIndex.ToString("000000"))) profileIndex++;
-                Directory.CreateDirectory(dbLoc+ profileIndex.ToString("000000"));
-                libProChic.ConfigHelper profile = new libProChic.ConfigHelper(dbLoc + profileIndex.ToString("000000") + @"\details.pro",false);
-                if (!File.Exists(dbLoc + profileIndex.ToString("000000") + @"\pro.jpg")) picProfile.Image.Save(dbLoc + profileIndex.ToString("000000") + @"\pro.jpg", System.Drawing.Imaging.ImageFormat.Bmp);
-                profile.SetConfig("Hidden", "Ver", Application.ProductVersion,true);
-                profile.SetConfig("Main", "FN", txtFirst.Text,true);
-                profile.SetConfig("Main", "MN", txtMiddle.Text,true);
-                profile.SetConfig("Main", "LN", txtLast.Text,true);
-                profile.Save();
+                if (! Directory.Exists(dbLoc + profileIndex.ToString("000000")))Directory.CreateDirectory(dbLoc+ profileIndex.ToString("000000"));
+                if (!File.Exists(dbLoc + profileIndex.ToString("000000") + @"\pro.jpg")) picProfile.Image.Save(dbLoc + profileIndex.ToString("000000") + @"\pro.jpg");
+                Profile.Version = Application.ProductVersion;
+                Profile.FirstName= txtFirst.Text;
+                Profile.MiddleName = txtMiddle.Text;
+                Profile.LastName = txtLast.Text;
+                Profile.Save();
                 DialogResult = DialogResult.OK;
                 this.Close();
             }
@@ -57,10 +63,7 @@ namespace MultiFaceRec
             }
             return true;
         }
-        public String ProfileName()
-        {
-            return (txtFirst.Text + " " + txtLast.Text).Trim();
-        }
+        public Profile Profile { get; set; }
         public String profileLocation()
         {
             return dbLoc + profileIndex.ToString("000000");
