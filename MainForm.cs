@@ -38,7 +38,7 @@ namespace MultiFaceRec
             InitializeComponent();
             this.elvThumb.FileOpened += elvThumb_Open;
             //PicasaDBConverter.CheckForPicasaDB();
-
+            propertyGrid1.SelectedObject =elvThumb;
             //Load haarcascades for face detection
             face = new HaarCascade("haarcascade_frontalface_default.xml");
             //eye = new HaarCascade("haarcascade_eye.xml");
@@ -48,7 +48,7 @@ namespace MultiFaceRec
                     Directory.CreateDirectory(folderRoot + "DB\\");
                 foreach (String prof in Directory.GetDirectories(folderRoot + "DB"))
                 {
-                    labels.Add(new Profile(prof + "\\details.pro"));
+                    labels.Add(new Profile(prof));
                     trainingImages.Add(new Image<Gray, byte>(prof+"\\pro.jpg").Resize(IMGSIZE,IMGSIZE,INTER.CV_INTER_CUBIC));
                 }
             
@@ -133,10 +133,20 @@ namespace MultiFaceRec
             Debug.WriteLine("Opened " + filePath);
         }
 
-        private void explorerTreeView1_AfterSelect(object sender, TreeViewEventArgs e)
+
+        private void profileManagerToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            elvThumb.Directory= e.Node.Tag.ToString();
+            ProfileManager pMan = new ProfileManager();
+            if (pMan.ShowDialog() == DialogResult.OK)
+            {
+
+            }
         }
+
+        private void etvDirStruct_AfterSelect(object sender, TreeViewEventArgs e)
+        {
+            elvThumb.Directory = e.Node.Tag.ToString();
+    }
 
         void FrameGrabber(String fileName)
         {
@@ -238,7 +248,7 @@ namespace MultiFaceRec
 
         private void Fil_DetailUpdate(object sender, EventArgs e)
         {
-            labels.Add(new Profile( sender.ToString()+ "\\details.pro"));
+            labels.Add(new Profile( sender.ToString()));
             trainingImages.Add(new Image<Gray, byte>(  sender.ToString() + "\\pro.jpg").Resize(IMGSIZE,IMGSIZE,INTER.CV_INTER_CUBIC));
         }
     }
