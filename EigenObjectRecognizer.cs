@@ -78,8 +78,8 @@ namespace MultiFaceRec
       /// </summary>
       /// <param name="images">The images used for training, each of them should be the same size. It's recommended the images are histogram normalized</param>
       /// <param name="termCrit">The criteria for recognizer training</param>
-      public NewEigenObjectRecognizer(Image<Gray, Byte>[] images, ref MCvTermCriteria termCrit)
-         : this(images, GenerateLabels(images.Length), ref termCrit)
+      public NewEigenObjectRecognizer(Image<Gray, Byte>[] images, MCvTermCriteria termCrit)
+         : this(images, GenerateLabels(images.Length), termCrit)
       {
       }
 
@@ -97,8 +97,8 @@ namespace MultiFaceRec
       /// <param name="images">The images used for training, each of them should be the same size. It's recommended the images are histogram normalized</param>
       /// <param name="labels">The labels corresponding to the images</param>
       /// <param name="termCrit">The criteria for recognizer training</param>
-      public NewEigenObjectRecognizer(Image<Gray, Byte>[] images, Profile[] labels, ref MCvTermCriteria termCrit)
-         : this(images, labels, 0, ref termCrit)
+      public NewEigenObjectRecognizer(Image<Gray, Byte>[] images, Profile[] labels, MCvTermCriteria termCrit)
+         : this(images, labels, 0, termCrit)
       {
       }
 
@@ -113,7 +113,7 @@ namespace MultiFaceRec
       /// If the threshold is &lt; 0, the recognizer will always treated the examined image as one of the known object. 
       /// </param>
       /// <param name="termCrit">The criteria for recognizer training</param>
-      public NewEigenObjectRecognizer(Image<Gray, Byte>[] images, Profile[] labels, double eigenDistanceThreshold, ref MCvTermCriteria termCrit)
+      public NewEigenObjectRecognizer(Image<Gray, Byte>[] images, Profile[] labels, double eigenDistanceThreshold, MCvTermCriteria termCrit)
       {
          Debug.Assert(images.Length == labels.Length, "The number of images should equals the number of labels");
          Debug.Assert(eigenDistanceThreshold >= 0.0, "Eigen-distance threshold should always >= 0.0");
