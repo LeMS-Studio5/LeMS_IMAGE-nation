@@ -15,7 +15,10 @@ namespace MultiFaceRec
         private ConfigHelper prof;
         public Profile()
         {
-
+            prof = new ConfigHelper();
+            prof.SetConfig("Main", "FN", "", true);
+            prof.SetConfig("Main", "MN", "", true);
+            prof.SetConfig("Main", "LN", "", true);
         }
 
         public Profile(String profileFolder)
@@ -38,7 +41,15 @@ namespace MultiFaceRec
         {
             return prof.GetConfig("Main", "FN").Setting + " " + prof.GetConfig("Main", "LN").Setting;
         }
-        public Bitmap prepareImage(string imageLocation)
+        public String LastFirstName()
+        {
+            return prof.GetConfig("Main", "LN").Setting + ", " + prof.GetConfig("Main", "FN").Setting;
+        }
+        public override String ToString()
+        {
+            return prof.GetConfig("Main", "FN").Setting + " " + prof.GetConfig("Main", "LN").Setting;
+        }
+        public static Bitmap prepareImage(string imageLocation)
         {
             if (!File.Exists(imageLocation))
                 throw new Exception(imageLocation + " could not be found");
