@@ -13,7 +13,7 @@ namespace MultiFaceRec
 {
     public partial class ProfileManager : Form
     {
-        private String dbLoc = Environment.ExpandEnvironmentVariables("%appdata%") + @"\LeMS\Imagenation\DB\";
+        private String dbLoc = Environment.ExpandEnvironmentVariables("%appdata%") + @"\LeMS\Imagenation\DB\FaceDB";
         private Dictionary<int, int> indexReflect = new Dictionary<int, int>(); //lbx index, db index
         public ProfileManager()
         {
