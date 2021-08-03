@@ -14,7 +14,7 @@ namespace MultiFaceRec
     public partial class PersonDetails : Form
     {
         int profileIndex=0;
-        String dbLoc = Environment.ExpandEnvironmentVariables("%appdata%") + @"\LeMS\Imagenation\DB\";
+        String dbLoc = Environment.ExpandEnvironmentVariables("%appdata%") + @"\LeMS\Imagenation\DB\FaceDB\";
         public PersonDetails(System.Drawing.Image ProfileImage)
         {
             InitializeComponent();
