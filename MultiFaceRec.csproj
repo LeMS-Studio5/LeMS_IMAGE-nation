@@ -34,7 +34,7 @@
     <PlatformTarget>x86</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
-    <Optimize>true</Optimize>
+    <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
@@ -77,6 +77,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DirectoryManager.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DirectoryManager.Designer.cs">
+      <DependentUpon>DirectoryManager.cs</DependentUpon>
+    </Compile>
     <Compile Include="EigenObjectRecognizer.cs" />
     <Compile Include="FaceFiller.cs">
       <SubType>Component</SubType>
@@ -95,13 +101,25 @@
     </Compile>
     <Compile Include="PicasaDBConverter.cs" />
     <Compile Include="Profile.cs" />
+    <Compile Include="ProfileManager.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ProfileManager.Designer.cs">
+      <DependentUpon>ProfileManager.cs</DependentUpon>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="DirectoryManager.resx">
+      <DependentUpon>DirectoryManager.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="PersonDetails.resx">
       <DependentUpon>PersonDetails.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ProfileManager.resx">
+      <DependentUpon>ProfileManager.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
