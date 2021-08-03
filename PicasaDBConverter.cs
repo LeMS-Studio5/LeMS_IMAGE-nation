@@ -33,18 +33,26 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 */
-public static void CheckForPicasaDB()
+public static Boolean CheckForPicasaDB()
         {
             String folder = Environment.ExpandEnvironmentVariables("%LOCALAPPDATA%") + @"/Google/Picasa2/db3/";
             if (Directory.Exists((folder)))
             {
-                System.Windows.Forms.MessageBox.Show("Exists");
-                PicasaFaces faces = new PicasaFaces(folder);
-                faces.populate();
-                faces.populatePersons();
-                faces.gatherImages();
-                faces.processImages();
+                if (System.Windows.Forms.MessageBox.Show("A Picasa Database was found. Would you like to import it?","Picasa Conversion",System.Windows.Forms.MessageBoxButtons.YesNo) == System.Windows.Forms.DialogResult.Yes)
+                {
+
+                    PicasaFaces faces = new PicasaFaces(folder);
+                    faces.populate();
+                    faces.populatePersons();
+                    faces.gatherImages();
+                    faces.processImages();
+                }else
+                {
+
+                }
+                return true;
             }
+            return false;
         }
     }
   public  class Face
@@ -311,7 +319,9 @@ long ret =
 
                 if (db.indexes.indexes[i] != (db.indexes.folderIndex))
                 { // not a folder
-                    String path = db.indexes.names[(int)(db.indexes.indexes[i])]+ db.indexes.names[i];
+                    //String path = db.indexes.names[(int)(db.indexes.indexes[i])];// + db.indexes.names[i];
+                    String path = "";
+                    if (db.indexes.originalIndexes[i] != (db.indexes.folderIndex)) path=db.imagedata["albumdata_filename"][int.Parse(db.imagedata["original index"][((int)db.indexes.indexes[i])])] + db.indexes.names[i];
                     int w = int.Parse(db.imagedata["width"][i]);
                     int h = int.Parse(db.imagedata["height"][i]);
                     Image img = new Image(path, i, w, h);
@@ -370,7 +380,7 @@ public void processImages(){
 				csv+=(",");
 				csv+=(f.img.path);
 				csv+=(",");
-				csv+=(f.img.w);
+                csv+=(f.img.w);
 				csv+=(",");
 				csv+=(f.img.h);
 				csv+=(",");
