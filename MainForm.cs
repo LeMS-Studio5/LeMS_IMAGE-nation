@@ -15,6 +15,8 @@ using Emgu.CV.Structure;
 using Emgu.CV.CvEnum;
 using System.IO;
 using System.Diagnostics;
+using System.Linq;
+using libProChic;
 
 namespace MultiFaceRec
 {
@@ -23,42 +25,57 @@ namespace MultiFaceRec
         //Declararation of all variables, vectors and haarcascades
         Image<Bgr, Byte> currentFrame;
         Capture grabber;
-        HaarCascade face;
-        HaarCascade eye;
+        HaarCascade face, eye;
         MCvFont font = new MCvFont(FONT.CV_FONT_HERSHEY_TRIPLEX, 0.5d, 0.5d);
-        Image<Gray, byte> result, TrainedFace = null;
-        Image<Gray, byte> gray = null;
+        Image<Gray, byte> result, TrainedFace = null, gray = null;
         List<Image<Gray, byte>> trainingImages = new List<Image<Gray, byte>>();
         List<Profile> labels= new List<Profile>();
         List<string> NamePersons = new List<string>();
-        int IMGSIZE = 75;//ContTrain, NumLabels, t;
+        int IMGSIZE = 75, fillerHeight = 15;//ContTrain, NumLabels, t;
         string name, folderRoot=Environment.ExpandEnvironmentVariables("%appdata%")+ @"\LeMS\Imagenation\";
+        ConfigHelper config,existImg = new ConfigHelper();
+        Bitmap faceFrame;
         public FrmPrincipal()
         {
             InitializeComponent();
             this.elvThumb.FileOpened += elvThumb_Open;
+            this.grpResults.ControlAdded += FaceControlChange;
+            this.grpResults.ControlRemoved += FaceControlChange;
             //PicasaDBConverter.CheckForPicasaDB();
-            propertyGrid1.SelectedObject =elvThumb;
+            labels.Add(new Profile());
+            trainingImages.Add(new Image<Gray, byte>(IMGSIZE,IMGSIZE));
+            propertyGrid1.SelectedObject =imageBoxFrameGrabber;
             //Load haarcascades for face detection
             face = new HaarCascade("haarcascade_frontalface_default.xml");
             //eye = new HaarCascade("haarcascade_eye.xml");
             try
             {
-                if (!Directory.Exists(folderRoot + "DB\\"))
-                    Directory.CreateDirectory(folderRoot + "DB\\");
-                foreach (String prof in Directory.GetDirectories(folderRoot + "DB"))
+                if (!Directory.Exists(folderRoot + "DB\\FaceDB")){
+                    Directory.CreateDirectory(folderRoot + @"DB\FaceDB");
+                    Directory.CreateDirectory(folderRoot + @"DB\ImageDB");
+                }
+                    foreach (String prof in Directory.GetDirectories(folderRoot + @"DB\FaceDB"))
                 {
                     labels.Add(new Profile(prof));
                     trainingImages.Add(new Image<Gray, byte>(prof+"\\pro.jpg").Resize(IMGSIZE,IMGSIZE,INTER.CV_INTER_CUBIC));
                 }
-            
+                labels = labels.OrderBy(f => f.LastFirstName()).ToList();
             }
             catch
             {
                 //MessageBox.Show(e.ToString());
                 MessageBox.Show("Nothing in binary database, please add at least a face(Simply train the prototype with the Add Face Button).", "Triained faces load", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
             }
-
+            GetKeys();
+            config = new ConfigHelper(folderRoot + "prop.ini");
+            prepareETV();
+        }
+        private void prepareETV() {
+            etvDirStruct.Clear();
+            foreach (Config c in config.GetConfigGroup("Dir",true).ToArray())
+            {
+                etvDirStruct.AddNode(c.Setting);
+            }
         }
         private Image<Gray,byte> ResizeImage(Image<Gray,byte> input, int maxHeight, int maxWidth)
         {
@@ -146,64 +163,72 @@ namespace MultiFaceRec
         private void etvDirStruct_AfterSelect(object sender, TreeViewEventArgs e)
         {
             elvThumb.Directory = e.Node.Tag.ToString();
+            lblDirectory.Text = "Directory: " + elvThumb.Directory.TrimEnd('\\') + ": " + elvThumb.Items.Count + " Images";
     }
+        private void directoryManagerToolStripMenuItem_Click(object sender, EventArgs e){
+            DirectoryManager dMan = new DirectoryManager(config);
+            dMan.ShowDialog();
+            if (dMan.DirChange){prepareETV();}                
+        }
+        void pre(Rectangle rect,String fileName)
+        {            
+            String loopIndex = "0";
 
+            //draw the face detected in the 0th (gray) channel with blue color
+            System.Drawing.Image facePreview = faceFrame.Clone(new Rectangle(rect.X, rect.Y, rect.Width, rect.Height), System.Drawing.Imaging.PixelFormat.DontCare);
+            currentFrame.Draw(rect, new Bgr(Color.Red), 2);
+            if (!NameIndex.ContainsKey(fileName) || trainingImages.ToArray().Length != 0)
+            {
+                //TermCriteria for face recognition with numbers of trained images like maxIteration
+                MCvTermCriteria termCrit = new MCvTermCriteria(labels.Count + 1, 0.001);
+
+                result = currentFrame.Copy(rect).Convert<Gray, byte>().Resize(IMGSIZE, IMGSIZE, Emgu.CV.CvEnum.INTER.CV_INTER_CUBIC);
+                //Eigen face recognizer
+                NewEigenObjectRecognizer recognizer = new NewEigenObjectRecognizer(trainingImages.ToArray(), labels.ToArray(), 850, termCrit);
+
+                name = recognizer.Recognize(result);
+            }
+            else name = existImg.GetConfig(loopIndex, "n").Setting;
+            //Draw the label for each face detected and recognized
+            currentFrame.Draw(name, ref font, new Point(rect.X - 2, rect.Y - 2), new Bgr(Color.LightGreen));
+            FaceFiller fil = new FaceFiller(facePreview, name, labels,loopIndex, AddKey(fileName, CreateKey(loopIndex, rect.X, rect.Y, rect.Width, rect.Height, name, fileName)));
+            fil.DetailUpdate += Fil_DetailUpdate;
+            fil.Location = new Point(fil.Location.X, fillerHeight);
+            fillerHeight += fil.Height + 5;
+            grpResults.Controls.Add(fil);
+            loopIndex = (int.Parse(loopIndex) + 1) + "";
+        }
         void FrameGrabber(String fileName)
         {
                 //foreach (String fileName in System.IO.Directory.GetFiles(@"E:\Public\Pictures\YearBook\2019", "*.jpg")) {
                 Console.WriteLine("Inside");
-                //lblNumber.Text = "0";
-                //label4.Text = "";
-                //NamePersons.Add("");
-
-                    //Get the current frame form capture device
-                    currentFrame = new Image<Bgr, byte>(fileName);//grabber.QueryFrame().Resize(320, 240, Emgu.CV.CvEnum.INTER.CV_INTER_CUBIC);//new Image<Bgr, byte>(fileName);//
+            fillerHeight = 15;
+            //lblNumber.Text = "0";
+            //label4.Text = "";
+            //NamePersons.Add("");
+            //Get the current frame form capture device
+            MCvAvgComp[][] facesDetected =null;
+            currentFrame = new Image<Bgr, byte>(fileName);//grabber.QueryFrame().Resize(320, 240, Emgu.CV.CvEnum.INTER.CV_INTER_CUBIC);//new Image<Bgr, byte>(fileName);//
+            faceFrame = new Bitmap(currentFrame.Bitmap);
+            if (!NameIndex.ContainsKey(fileName))
+            {
 
                 //Convert it to Grayscale
                 gray = currentFrame.Convert<Gray, Byte>();
-
-                    //Face Detector
-                    MCvAvgComp[][] facesDetected = gray.DetectHaarCascade(
-                  face,
-                  1.2,
-                  10,
-                  Emgu.CV.CvEnum.HAAR_DETECTION_TYPE.DO_CANNY_PRUNING,
-                  new Size(20, 20));
-            int fillerHeight = 15;
-            //Action for each element detected
-            grpResults.Controls.Clear();
-            foreach (MCvAvgComp f in facesDetected[0])
+                //Face Detector
+                facesDetected = gray.DetectHaarCascade(face, 1.2, 10, Emgu.CV.CvEnum.HAAR_DETECTION_TYPE.DO_CANNY_PRUNING, new Size(30, 30));
+            }
+                //Action for each element detected
+                grpResults.Controls.Clear();
+            if (NameIndex.ContainsKey(fileName))
             {
-                result = currentFrame.Copy(f.rect).Convert<Gray, byte>().Resize(IMGSIZE,IMGSIZE, Emgu.CV.CvEnum.INTER.CV_INTER_CUBIC);
-                //draw the face detected in the 0th (gray) channel with blue color
-                System.Drawing.Image facePreview = currentFrame.Bitmap.Clone(new Rectangle(f.rect.X, f.rect.Y, f.rect.Width, f.rect.Height), System.Drawing.Imaging.PixelFormat.DontCare);
-                currentFrame.Draw(f.rect, new Bgr(Color.Red), 2);
-
-
-                if (trainingImages.ToArray().Length != 0)
-                {
-                    //TermCriteria for face recognition with numbers of trained images like maxIteration
-                    MCvTermCriteria termCrit = new MCvTermCriteria(labels.Count+1, 0.001);
-
-                    //Eigen face recognizer
-                    NewEigenObjectRecognizer recognizer = new NewEigenObjectRecognizer(
-                       trainingImages.ToArray(),
-                       labels.ToArray(),
-                       850,
-                       ref termCrit);
-
-                    name = recognizer.Recognize(result);
-
-                    //Draw the label for each face detected and recognized
-                    currentFrame.Draw(name, ref font, new Point(f.rect.X - 2, f.rect.Y - 2), new Bgr(Color.LightGreen));
-                }
-                    FaceFiller fil = new FaceFiller(facePreview, name);
-                fil.DetailUpdate += Fil_DetailUpdate;
-                fil.Location = new Point(fil.Location.X, fillerHeight);
-                fillerHeight += fil.Height + 5;
-                    grpResults.Controls.Add(fil);
-
-                //NamePersons[t - 1] = name;
+                existImg = new ConfigHelper(folderRoot + @"DB\ImageDB\" + NameIndex[fileName].ToString("0000000000"), false);
+                foreach (ConfigGroup c in existImg.GetAllConfigsGroup()) pre(new Rectangle(c.Item("x").Int, c.Item("y").Int, c.Item("w").Int, c.Item("h").Int),fileName);
+            }
+            else
+            {
+                foreach (MCvAvgComp f in facesDetected[0])  pre(f.rect,fileName);
+               //NamePersons[t - 1] = name;
                 //NamePersons.Add("");
 
 
@@ -230,26 +255,69 @@ namespace MultiFaceRec
                 }
 
 */
+
+                //Bitmap b = (new Bitmap(fileName));
+                //foreach (var p in b.PropertyItems) Debug.WriteLine(ReadFunctions.getString(p.Value)+ b.PropertyIdList);
             }
-                    
-                    //Names concatenation of persons recognized
-                    for (int nnn = 0; nnn < facesDetected[0].Length-1; nnn++)
-                    {
-                        //names = names + NamePersons[nnn] + ", ";
-                    }
-                    //Show the faces procesed and recognized
-                    imageBoxFrameGrabber.Image = currentFrame;
+            //Show the faces procesed and recognized
+            lblDirectory.Text = ("Directory: " + elvThumb.Directory.TrimEnd('\\') + ": " + elvThumb.Items.Count + " Images").PadRight(130)+ "File: " + Path.GetFileName(fileName);
+                    imageBoxFrameGrabber.Image = currentFrame.Bitmap;
                 imageBoxFrameGrabber.Invalidate();
+            imageBoxFrameGrabber.Focus();
                     //lblNobody.Text = names;
                     //Clear the list(vector) of names
-                    NamePersons.Clear();
-                
+            NamePersons.Clear();
             }
 
         private void Fil_DetailUpdate(object sender, EventArgs e)
         {
             labels.Add(new Profile( sender.ToString()));
             trainingImages.Add(new Image<Gray, byte>(  sender.ToString() + "\\pro.jpg").Resize(IMGSIZE,IMGSIZE,INTER.CV_INTER_CUBIC));
+        }
+        private void FaceControlChange(Object sender, EventArgs e)
+        {
+            lblFaces.Text = "Faces: " + grpResults.Controls.Count + " Found";
+        }
+        private Dictionary<String, Int64> NameIndex { get; set; } = new Dictionary<string, long>();
+        private void GetKeys()
+        {
+            if (!Directory.Exists(folderRoot + @"DB\ImageDB")) Directory.CreateDirectory(folderRoot + @"DB\ImageDB\");
+            if (!File.Exists(folderRoot + @"DB\ImageDB\keys")) File.WriteAllText(folderRoot + @"DB\ImageDB\keys", "");
+            String[] map = File.ReadAllLines(folderRoot + @"DB\ImageDB\keys");
+            Dictionary<String, Int64> result = new Dictionary<string, long>();
+            foreach (String m in map)
+            {
+                String[] split = m.Split('=');
+                NameIndex.Add(split[0], long.Parse(split[1]));
+            }
+        }
+        private Int64 AddKey(String imgPath, Int64 key)
+        {
+            if (!NameIndex.ContainsKey(imgPath)){
+                String build = "";
+                NameIndex.Add(imgPath, key);
+                String[] paths = NameIndex.Keys.ToArray();
+                Int64[] keys = NameIndex.Values.ToArray();
+                for (int index = 0; index < keys.Length; index++) {
+                    build += paths[index] + '=' + keys[index].ToString("0000000000")+Environment.NewLine;
+                }
+                File.WriteAllText(folderRoot + @"DB\ImageDB\keys", build);
+            }
+            return key;
+        }
+        private Int64 CreateKey(String index,int x,int y,int w,int h,String name,String filename)
+        {
+            Int64 key = NameIndex.Count + 1;
+            if (NameIndex.ContainsKey(filename)) key = NameIndex[filename];
+            ConfigHelper keyCreate;
+            keyCreate = new ConfigHelper(folderRoot + @"DB\ImageDB\" + key.ToString("0000000000"), false);
+            keyCreate.SetConfig(index, "x", x.ToString(), true);
+            keyCreate.SetConfig(index, "y", y.ToString(), true);
+            keyCreate.SetConfig(index, "w", w.ToString(), true);
+            keyCreate.SetConfig(index, "h", h.ToString(), true);
+            keyCreate.SetConfig(index, "n", name, true);
+            keyCreate.Save();
+            return key;
         }
     }
 }
